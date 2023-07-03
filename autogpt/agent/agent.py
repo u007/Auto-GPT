@@ -25,25 +25,6 @@ from autogpt.speech import say_text
 from autogpt.spinner import Spinner
 from autogpt.utils import clean_input
 from autogpt.workspace import Workspace
-from functools import wraps
-import time
-
-def retry(max_retries=3, delay=1):
-    def decorator_retry(func):
-        @wraps(func)
-        def wrapper_retry(*args, **kwargs):
-            retries = 0
-            while retries < max_retries:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    retries += 1
-                    if retries < max_retries:
-                        time.sleep(delay)
-                    else:
-                        raise e
-        return wrapper_retry
-    return decorator_retry
 
 
 class Agent:
