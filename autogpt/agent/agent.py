@@ -10,6 +10,7 @@ from autogpt.config.ai_config import AIConfig
 from autogpt.json_utils.utilities import extract_json_from_response, validate_json
 from autogpt.llm.chat import chat_with_ai
 from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS
+from retry.api import retry_call
 from autogpt.llm.utils import count_string_tokens
 from autogpt.log_cycle.log_cycle import (
     FULL_MESSAGE_HISTORY_FILE_NAME,
@@ -132,15 +133,15 @@ class Agent:
                 break
             # Send message to AI, get response
             with Spinner("Thinking... ", plain_output=self.config.plain_output):
-                assistant_reply = chat_with_ai(
+                assistant_reply = retry_call(chat_with_ai, fargs=[
                     self.config,
                     self,
                     self.system_prompt,
                     self.triggering_prompt,
                     self.fast_token_limit,
                     self.config.fast_llm_model,
-                )
-
+                ], tries=3, delay=1)
+            print("assistant_reply: ", assistant_reply)
             try:
                 assistant_reply_json = extract_json_from_response(
                     assistant_reply.content
@@ -155,6 +156,7 @@ class Agent:
                     continue
                 assistant_reply_json = plugin.post_planning(assistant_reply_json)
 
+            print("get_command %s", assistant_reply_json)
             # Print Assistant thoughts
             if assistant_reply_json != {}:
                 # Get command name and arguments
@@ -165,6 +167,7 @@ class Agent:
                     command_name, arguments = get_command(
                         assistant_reply_json, assistant_reply, self.config
                     )
+                    
                     if self.config.speak_mode:
                         say_text(f"I want to execute {command_name}")
 
@@ -179,6 +182,8 @@ class Agent:
                 assistant_reply_json,
                 NEXT_ACTION_FILE_NAME,
             )
+
+            print("command_name %s" % command_name)
 
             # First log new-line so user can differentiate sections better in console
             logger.typewriter_log("\n")
