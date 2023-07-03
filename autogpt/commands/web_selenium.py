@@ -33,6 +33,7 @@ from autogpt.logs import logger
 from autogpt.memory.vector import MemoryItem, get_memory
 from autogpt.processing.html import extract_hyperlinks, format_hyperlinks
 from autogpt.url_utils.validators import validate_url
+import xml.etree
 
 BrowserOptions = ChromeOptions | EdgeOptions | FirefoxOptions | SafariOptions
 
@@ -63,6 +64,7 @@ def browse_website(url: str, question: str, agent: Agent) -> str:
         Tuple[str, WebDriver]: The answer and links to the user and the webdriver
     """
     try:
+        print("Scraping website with Selenium: %s..." % url)
         driver, text = scrape_text_with_selenium(url, agent)
     except WebDriverException as e:
         # These errors are often quite long and include lots of context.
@@ -71,14 +73,60 @@ def browse_website(url: str, question: str, agent: Agent) -> str:
         return f"Error: {msg}"
 
     add_header(driver)
+    print("summarizing: %s..." % url)
     summary = summarize_memorize_webpage(url, text, question, agent, driver)
+    print("summarized: %s" % summary)
     links = scrape_links_with_selenium(driver, url)
 
     # Limit links to 5
-    if len(links) > 5:
-        links = links[:5]
+    # if len(links) > 5:
+    #     links = links[:5]
     close_browser(driver)
     return f"Answer gathered from website: {summary}\n\nLinks: {links}"
+
+@command(
+    "extract_links",
+    "Extract links on Website",
+    {
+        "url": {"type": "string", "description": "The URL to visit to extract data", "required": True},
+        "offset": {"type": "integer", "description": "The offset of the links to return", "required": True},
+        "limit": {"type": "integer", "description": "The limit of the links to return", "required": True},
+        "question": {
+            "type": "string",
+            "description": "What you want to find on the website",
+            "required": True,
+        },
+    },
+)
+@validate_url
+def extract_links(url: str, offset: int, limit: int, question: str, agent: Agent) -> str:
+    """Browse a website and return the answer and links to the user
+
+    Args:
+        url (str): The url of the website to browse
+        offset (int): The offset of the links to return
+        limit (int): The limit of the links to return
+        question (str): The question asked by the user
+
+    Returns:
+        Tuple[str, WebDriver]: The answer and links to the user and the webdriver
+    """
+    try:
+        print("Scraping website with Selenium: %s..." % url)
+        driver, text = scrape_text_with_selenium(url, agent)
+    except WebDriverException as e:
+        # These errors are often quite long and include lots of context.
+        # Just grab the first line.
+        msg = e.msg.split("\n")[0]
+        return f"Error: {msg}"
+
+    add_header(driver)
+    links = scrape_links_with_selenium(driver, url)
+    
+    res_links = links[offset:offset+limit]
+    close_browser(driver)
+    print("links %s" % res_links)
+    return f"Links gathered from website: {res_links}"
 
 
 def scrape_text_with_selenium(url: str, agent: Agent) -> tuple[WebDriver, str]:
@@ -157,7 +205,7 @@ def scrape_text_with_selenium(url: str, agent: Agent) -> tuple[WebDriver, str]:
     return driver, text
 
 
-def scrape_links_with_selenium(driver: WebDriver, url: str) -> list[str]:
+def scrape_links_with_selenium(driver: WebDriver, url: str, xpath_expression = None) -> list[str]:
     """Scrape links from a website using selenium
 
     Args:
@@ -168,6 +216,20 @@ def scrape_links_with_selenium(driver: WebDriver, url: str) -> list[str]:
     """
     page_source = driver.page_source
     soup = BeautifulSoup(page_source, "html.parser")
+
+    if xpath_expression is None:
+        root = etree.HTML(str(soup))
+        elements = root.xpath(xpath_expression)
+        links = []
+        for dom in elements:
+            link_elements = dom.xpath(".//a")
+            for element in link_elements:
+                url = element.get('href')
+                text = element.text
+                links.append({'URL': url, 'Text': text})
+        
+        return links
+
 
     for script in soup(["script", "style"]):
         script.extract()
