@@ -141,7 +141,7 @@ class Agent:
                     self.fast_token_limit,
                     self.config.fast_llm_model,
                 ], tries=3, delay=1)
-            print("assistant_reply: ", assistant_reply)
+
             try:
                 assistant_reply_json = extract_json_from_response(
                     assistant_reply.content
@@ -156,7 +156,7 @@ class Agent:
                     continue
                 assistant_reply_json = plugin.post_planning(assistant_reply_json)
 
-            print("get_command %s", assistant_reply_json)
+            print("assistant_reply_json %s" % assistant_reply_json)
             # Print Assistant thoughts
             if assistant_reply_json != {}:
                 # Get command name and arguments
@@ -174,7 +174,7 @@ class Agent:
                     arguments = self._resolve_pathlike_command_args(arguments)
 
                 except Exception as e:
-                    logger.error("Error: \n", str(e))
+                    logger.error("start_interaction_loop Error: \n", e)
             self.log_cycle_handler.log_cycle(
                 self.ai_config.ai_name,
                 self.created_at,
@@ -182,12 +182,12 @@ class Agent:
                 assistant_reply_json,
                 NEXT_ACTION_FILE_NAME,
             )
-
-            print("command_name %s" % command_name)
+            
+            if command_name is None:
+                print("command_name empty: %s" % command_name) 
 
             # First log new-line so user can differentiate sections better in console
             logger.typewriter_log("\n")
-            logger.typewriter_log("command_name: ", command_name, "assistant_reply_json: ", assistant_reply_json)
             logger.typewriter_log(
                 "NEXT ACTION: ",
                 Fore.CYAN,

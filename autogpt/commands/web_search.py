@@ -115,7 +115,7 @@ def google(query: str, agent: Agent, num_results: int = 8) -> str | list[str]:
         ):
             return "Error: The provided Google API key is invalid or missing."
         else:
-            return f"Error: {e}"
+            return f"google: Error: {e}"
     # google_result can be a list or a string depending on the search results
 
     # Return the list of search result URLs
