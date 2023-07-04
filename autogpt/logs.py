@@ -269,8 +269,7 @@ def print_assistant_thoughts(
     assistant_thoughts_criticism = None
 
     assistant_thoughts = assistant_reply_json_valid.get("thoughts", None)
-    print("thoughts", assistant_thoughts)
-    assistant_thoughts_text = remove_ansi_escape(assistant_thoughts.get("text"))
+    assistant_thoughts_text = remove_ansi_escape(assistant_thoughts.get("text")) if assistant_thoughts is not None else ""
     if assistant_thoughts:
         assistant_thoughts_reasoning = remove_ansi_escape(
             assistant_thoughts.get("reasoning")
