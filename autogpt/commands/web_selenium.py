@@ -122,15 +122,14 @@ def extract_links(url: str, offset: int, limit: int, question: str, agent: Agent
     Returns:
         Tuple[str, WebDriver]: The answer and links to the user and the webdriver
     """
-    print("Scraping website with Selenium: %s..." % url)
+    print("Scraping website with Selenium: %s offset: %d, %d..." % (url, offset, limit))
     driver, text = scrape_text_with_selenium(url, agent)
     
     try:
-        print("finding links: %s" % url)
         add_header(driver)
         links = scrape_links_with_selenium(driver, url)
         res_links = links[offset:offset+limit]
-        print("links %s" % res_links)
+        # print("links %s" % res_links)
         return f"Links gathered from website: {res_links}"
     except Exception as e:
         print(f"Error scraping links: {e}")
@@ -229,7 +228,6 @@ def scrape_links_with_selenium(driver: WebDriver, url: str, xpath_expression = N
     print("scrape_links_with_selenium: xpath: %s" % xpath_expression)
     # print("scrape_links_with_selenium: %s" % page_source)
     soup = BeautifulSoup(page_source, "html.parser")
-    print("scrape_links_with_selenium: soup ok!")
     if xpath_expression is not None:
         root = etree.HTML(str(soup))
         elements = root.xpath(xpath_expression)
@@ -243,7 +241,6 @@ def scrape_links_with_selenium(driver: WebDriver, url: str, xpath_expression = N
         
         return links
 
-    print("scrape_links_with_selenium: extracting script and style")
     for script in soup(["script", "style"]):
         script.extract()
 
