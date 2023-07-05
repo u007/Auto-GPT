@@ -82,8 +82,15 @@ def browse_website(url: str, question: str, agent: Agent) -> str:
         print(f"Error summarizing: {e}")
 
     try:
-        links = scrape_links_with_selenium(driver, url)
-        print("found links: %s" % len(links))
+        xpath_expression = None
+        if "#" in url:
+            anchor_name = url.split("#")[1]
+            xpath_expression = (
+                "//h2[span[@id='{}']]//following::table | //h2[span[@id='{}']]//following::div | "
+                "//h1[span[@id='{}']]//following::table | //h1[span[@id='{}']]//following::div"
+            ).format(anchor_name, anchor_name, anchor_name, anchor_name)
+        links = scrape_links_with_selenium(driver, url, xpath_expression)
+        print("found links: xpath: %s: %s" % (xpath_expression, len(links)))
         # Limit links to 5
         # if len(links) > 5:
         #     links = links[:5]
@@ -130,7 +137,9 @@ def extract_links(url: str, offset: int, limit: int, question: str, agent: Agent
         links = scrape_links_with_selenium(driver, url)
         res_links = links[offset:offset+limit]
         # print("links %s" % res_links)
-        return f"Links gathered from website: {res_links}"
+        if len(res_links) > 0:
+            return f"Links gathered from website: {res_links}"
+        return f"No more links"
     except Exception as e:
         print(f"Error scraping links: {e}")
         return f"Error scraping links: {str(e)}"

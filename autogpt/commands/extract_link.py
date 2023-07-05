@@ -54,8 +54,8 @@ html = """
 </html>
 """
 
-links = extract_links_with_labels_from_html(html)
-chunk_prefix = "links_chunk"
-output_directory = "./data"
+# links = extract_links_with_labels_from_html(html)
+# chunk_prefix = "links_chunk"
+# output_directory = "./data"
 
-save_links_to_csv(links, chunk_prefix, output_directory, 20)
+# save_links_to_csv(links, chunk_prefix, output_directory, 20)
