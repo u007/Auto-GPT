@@ -237,7 +237,7 @@ def scrape_links_with_selenium(driver: WebDriver, url: str, xpath_expression = N
             for element in link_elements:
                 url = element.get('href')
                 text = element.text
-                links.append({'URL': url, 'Text': text})
+                links.append({'URL': url.strip(), 'Text': text.strip()})
         
         return links
 
