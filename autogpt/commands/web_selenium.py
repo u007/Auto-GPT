@@ -33,6 +33,7 @@ from autogpt.logs import logger
 from autogpt.memory.vector import MemoryItem, get_memory
 from autogpt.processing.html import extract_hyperlinks, format_hyperlinks
 from autogpt.url_utils.validators import validate_url
+from lxml import etree
 
 BrowserOptions = ChromeOptions | EdgeOptions | FirefoxOptions | SafariOptions
 
@@ -63,23 +64,86 @@ def browse_website(url: str, question: str, agent: Agent) -> str:
         Tuple[str, WebDriver]: The answer and links to the user and the webdriver
     """
     try:
+        print("Scraping website with Selenium: %s..." % url)
         driver, text = scrape_text_with_selenium(url, agent)
     except WebDriverException as e:
         # These errors are often quite long and include lots of context.
         # Just grab the first line.
         msg = e.msg.split("\n")[0]
-        return f"Error: {msg}"
+        return f"browse_website Error: {msg}"
 
     add_header(driver)
-    summary = summarize_memorize_webpage(url, text, question, agent, driver)
-    links = scrape_links_with_selenium(driver, url)
+    print("summarizing: %s..." % url)
+    summary = ""
+    try:
+        summary = summarize_memorize_webpage(url, text, question, agent, driver)
+    except Exception as e:
+        print(f"Error summarizing: {e}")
 
-    # Limit links to 5
-    if len(links) > 5:
-        links = links[:5]
-    close_browser(driver)
-    return f"Answer gathered from website: {summary}\n\nLinks: {links}"
+    try:
+        xpath_expression = None
+        if "#" in url:
+            anchor_name = url.split("#")[1]
+            xpath_expression = (
+                "//h2[span[@id='{}']]//following::table | //h2[span[@id='{}']]//following::div | "
+                "//h1[span[@id='{}']]//following::table | //h1[span[@id='{}']]//following::div"
+            ).format(anchor_name, anchor_name, anchor_name, anchor_name)
+        links = scrape_links_with_selenium(driver, url, xpath_expression)
+        # print("found links: xpath: %s: %s" % (xpath_expression, len(links)))
+        # Limit links to 5
+        # if len(links) > 5:
+        #     links = links[:5]
+        return f"Answer gathered from website: {summary}\n\nLinks: {links}"
+    except Exception as e:
+        print(f"Error scraping links: {e}")
+    finally:
+        close_browser(driver)
 
+    return f"Answer gathered from website: {summary}"
+
+@command(
+    "extract_links",
+    "Extract links on Website",
+    {
+        "url": {"type": "string", "description": "The URL to visit to extract data", "required": True},
+        "offset": {"type": "integer", "description": "The offset of the links to return", "required": True},
+        "limit": {"type": "integer", "description": "The limit of the links to return", "required": True},
+        "question": {
+            "type": "string",
+            "description": "What you want to find on the website",
+            "required": True,
+        },
+    },
+)
+@validate_url
+def extract_links(url: str, offset: int, limit: int, question: str, agent: Agent) -> str:
+    """Browse a website and return the answer and links to the user
+
+    Args:
+        url (str): The url of the website to browse
+        offset (int): The offset of the links to return
+        limit (int): The limit of the links to return
+        question (str): The question asked by the user
+
+    Returns:
+        Tuple[str, WebDriver]: The answer and links to the user and the webdriver
+    """
+    print("Scraping website with Selenium: %s offset: %d, %d..." % (url, offset, limit))
+    driver, text = scrape_text_with_selenium(url, agent)
+    
+    try:
+        add_header(driver)
+        links = scrape_links_with_selenium(driver, url)
+        res_links = links[offset:offset+limit]
+        # print("links %s" % res_links)
+        if len(res_links) > 0:
+            return f"Links gathered from website: {res_links}"
+        return f"No more links"
+    except Exception as e:
+        print(f"Error scraping links: {e}")
+        return f"Error scraping links: {str(e)}"
+    finally:
+        close_browser(driver)
 
 def scrape_text_with_selenium(url: str, agent: Agent) -> tuple[WebDriver, str]:
     """Scrape text from a website using selenium
@@ -157,23 +221,39 @@ def scrape_text_with_selenium(url: str, agent: Agent) -> tuple[WebDriver, str]:
     return driver, text
 
 
-def scrape_links_with_selenium(driver: WebDriver, url: str) -> list[str]:
+def scrape_links_with_selenium(driver: WebDriver, url: str, xpath_expression = None) -> list[str]:
     """Scrape links from a website using selenium
 
     Args:
         driver (WebDriver): The webdriver to use to scrape the links
+        url (str): The url of the website to scrape
+        xpath_expression (str): optional: The xpath expression to use to scrape the links
 
     Returns:
         List[str]: The links scraped from the website
     """
     page_source = driver.page_source
+    print("scrape_links_with_selenium: xpath: %s" % xpath_expression)
+    # print("scrape_links_with_selenium: %s" % page_source)
     soup = BeautifulSoup(page_source, "html.parser")
+    if xpath_expression is not None:
+        root = etree.HTML(str(soup))
+        elements = root.xpath(xpath_expression)
+        links = []
+        for dom in elements:
+            link_elements = dom.xpath(".//a")
+            for element in link_elements:
+                url = element.get('href')
+                text = element.text
+                links.append({'URL': url.strip(), 'Text': text.strip()})
+        
+        return links
 
     for script in soup(["script", "style"]):
         script.extract()
 
     hyperlinks = extract_hyperlinks(soup, url)
-
+    
     return format_hyperlinks(hyperlinks)
 
 

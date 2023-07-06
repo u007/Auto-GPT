@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 GPT_4_MODEL = "gpt-4"
 GPT_3_MODEL = "gpt-3.5-turbo"
-
+GPT_3_16k_MODEL = "gpt-3.5-turbo-16k"
 
 def create_config(
     config: Config,
@@ -88,7 +88,7 @@ def create_config(
     if gpt3only:
         logger.typewriter_log("GPT3.5 Only Mode: ", Fore.GREEN, "ENABLED")
         # --gpt3only should always use gpt-3.5-turbo, despite user's FAST_LLM_MODEL config
-        config.fast_llm_model = GPT_3_MODEL
+        config.fast_llm_model = GPT_3_16k_MODEL
         config.smart_llm_model = GPT_3_MODEL
 
     elif (
