@@ -77,7 +77,6 @@ def browse_website(url: str, question: str, agent: Agent) -> str:
     summary = ""
     try:
         summary = summarize_memorize_webpage(url, text, question, agent, driver)
-        print("summarized: %s" % summary)
     except Exception as e:
         print(f"Error summarizing: {e}")
 
@@ -90,7 +89,7 @@ def browse_website(url: str, question: str, agent: Agent) -> str:
                 "//h1[span[@id='{}']]//following::table | //h1[span[@id='{}']]//following::div"
             ).format(anchor_name, anchor_name, anchor_name, anchor_name)
         links = scrape_links_with_selenium(driver, url, xpath_expression)
-        print("found links: xpath: %s: %s" % (xpath_expression, len(links)))
+        # print("found links: xpath: %s: %s" % (xpath_expression, len(links)))
         # Limit links to 5
         # if len(links) > 5:
         #     links = links[:5]
