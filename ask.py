@@ -41,31 +41,40 @@ def extract_text(html_content: str):
 async def answer_from_url(url: str, question: str):
   # Get the HTML content of the URL
   html_content : str = await browse_url(url)
-  
+  print("crawling", url)
   # Extract the text from the HTML content
   text = extract_text(html_content)
 
   messages = [
-    {'role': 'system', 'content': f'''Answer the following question from user in CSV format with header using context: 
+#     {'role': 'system', 'content': f'''Answer the following question from user in CSV format with header
+# course, duration, fees, entry requirements, url. Url column is the url to the course. CSV content need to be delimited by comma and enclosed by double quotes if it contains comma.
+# Answer using context: 
+# {text}
+# '''},
+    {'role': 'system', 'content': f'''Answer the following question from user in jsonl format with fields:
+course, duration, fees, entry requirements, url.
+Answer using context: 
 {text}
 '''},
     {'role': 'user', 'content': question},
   ]
 
+  print("sending to openai")
   completion = openai.ChatCompletion.create(
     model="gpt-4",
     messages=messages
   )
-  print(completion.choices[0].message)
+  # print(completion.choices[0].message)
 
+  with open('result.jsonl', 'w') as file:
+    file.write(completion.choices[0].message.content.strip())
   # Return the answer
-  return [text, completion]
+  return [text, completion.choices]
 
 
 # Run the async function to open the URL
 res: str = asyncio.get_event_loop().run_until_complete(answer_from_url("https://www.unsw.edu.au/study/undergraduate/bachelor-of-environmental-management?studentType=International", 
   "what is the duration of the course, fees and entry requirements?"))
 
-print("result: ", res)
-
+print("result: ", res[1])
 
